@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>AFXX Rewards</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep:#05061a;
+    --bg-indigo:#160f3d;
+    --bg-violet:#3a1f8a;
+    --accent-cyan:#39e6ff;
+    --accent-violet:#9b6bff;
+    --accent-gold:#ffc857;
+    --text-primary:#eef1ff;
+    --text-muted:#8b93b8;
+    --glass-fill:rgba(255,255,255,0.05);
+    --glass-border:rgba(255,255,255,0.10);
+    --danger:#ff5c7a;
+    --good:#3ce8a0;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background:#000;
+    font-family:'Inter',sans-serif;
+    color:var(--text-primary);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+    overflow:hidden;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important;}
+  }
+
+  #phone{
+    width:430px;
+    max-width:100vw;
+    height:100vh;
+    max-height:932px;
+    position:relative;
+    background:
+      radial-gradient(1200px 600px at 20% -10%, rgba(59,32,180,0.55), transparent 60%),
+      radial-gradient(900px 500px at 100% 10%, rgba(57,230,255,0.16), transparent 55%),
+      radial-gradient(800px 700px at 10% 110%, rgba(155,107,255,0.28), transparent 60%),
+      var(--bg-deep);
+    overflow:hidden;
+    box-shadow:0 0 0 1px rgba(255,255,255,0.06), 0 40px 120px rgba(0,0,0,0.8);
+  }
+
+  /* ambient particles */
+  .particle{
+    position:absolute; border-radius:50%;
+    background:radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), rgba(255,255,255,0));
+    opacity:0.35;
+    pointer-events:none;
+    animation:drift linear infinite;
+  }
+  @keyframes drift{
+    0%{transform:translateY(0) translateX(0); opacity:0;}
+    10%{opacity:0.5;}
+    90%{opacity:0.4;}
+    100%{transform:translateY(-120vh) translateX(20px); opacity:0;}
+  }
+
+  /* ---------- Screens ---------- */
+  .screen{
+    position:absolute; inset:0;
+    display:none;
+    flex-direction:column;
+    opacity:0;
+    transform:translateY(14px);
+    transition:opacity .38s ease, transform .38s ease;
+  }
+  .screen.active{ display:flex; opacity:1; transform:translateY(0); }
+
+  /* ---------- Splash ---------- */
+  #splash{ align-items:center; justify-content:center; text-align:center; gap:22px; }
+  .coin3d{
+    width:132px; height:132px; border-radius:50%;
+    background:
+      conic-gradient(from 220deg, #ffe9a8, #ffc857 25%, #b9791a 50%, #ffc857 75%, #ffe9a8);
+    box-shadow:
+      0 0 0 4px rgba(255,255,255,0.12),
+      0 0 60px 10px rgba(255,200,87,0.35),
+      inset 0 8px 18px rgba(255,255,255,0.5),
+      inset 0 -14px 22px rgba(0,0,0,0.4);
+    animation:spin3d 2.6s linear infinite;
+    position:relative;
+  }
+  .coin3d::after{
+    content:'A'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:48px; color:#5b3a06; text-shadow:0 1px 0 rgba(255,255,255,0.4);
+  }
+  @keyframes spin3d{
+    0%{transform:perspective(600px) rotateY(0deg);}
+    100%{transform:perspective(600px) rotateY(360deg);}
+  }
+  .brand{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:30px; letter-spacing:1px;
+    background:linear-gradient(90deg,var(--accent-cyan),var(--accent-violet));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .slogan{ color:var(--text-muted); font-size:13px; letter-spacing:3px; text-transform:uppercase; }
+  .loadbar{ width:180px; height:4px; border-radius:4px; background:rgba(255,255,255,0.08); overflow:hidden; }
+  .loadbar-fill{ height:100%; width:0%; background:linear-gradient(90deg,var(--accent-cyan),var(--accent-violet)); border-radius:4px; animation:load 1.8s ease forwards; }
+  @keyframes load{ to{ width:100%; } }
+
+  /* ---------- Shared chrome ---------- */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 20px 8px 20px;
+  }
+  .greeting{ font-size:12px; color:var(--text-muted); }
+  .username{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:16px; }
+  .avatar{
+    width:38px; height:38px; border-radius:12px;
+    background:linear-gradient(135deg,var(--accent-violet),var(--accent-cyan));
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-family:'Space Grotesk',sans-serif;
+    box-shadow:0 4px 14px rgba(155,107,255,0.4);
+  }
+
+  .content{ flex:1; overflow-y:auto; padding:8px 20px 100px 20px; scrollbar-width:none; }
+  .content::-webkit-scrollbar{ display:none; }
+
+  .glass{
+    background:var(--glass-fill);
+    border:1px solid var(--glass-border);
+    backdrop-filter:blur(18px);
+    -webkit-backdrop-filter:blur(18px);
+    border-radius:24px;
+  }
+
+  /* balance card */
+  .balance-card{
+    padding:22px; margin-top:6px; position:relative; overflow:hidden;
+  }
+  .balance-card::before{
+    content:''; position:absolute; inset:-40% -20% auto auto; width:220px; height:220px; border-radius:50%;
+    background:radial-gradient(circle, rgba(57,230,255,0.25), transparent 70%);
+  }
+  .balance-label{ font-size:11px; text-transform:uppercase; letter-spacing:2px; color:var(--text-muted); }
+  .balance-value{
+    font-family:'JetBrains Mono',monospace; font-size:34px; font-weight:700; margin-top:6px;
+    display:flex; align-items:baseline; gap:8px;
+  }
+  .balance-value span{ font-size:14px; color:var(--accent-gold); font-family:'Inter',sans-serif; font-weight:600; }
+  .balance-row{ display:flex; gap:10px; margin-top:16px; }
+  .mini-stat{ flex:1; padding:10px 12px; border-radius:16px; }
+  .mini-stat .l{ font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; }
+  .mini-stat .v{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:15px; margin-top:2px; }
+
+  .section-title{
+    font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15px; margin:22px 0 12px 2px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .section-title small{ color:var(--text-muted); font-weight:500; font-size:11px; }
+
+  .energy-wrap{ padding:16px 18px; margin-bottom:6px; }
+  .energy-top{ display:flex; justify-content:space-between; font-size:12px; color:var(--text-muted); margin-bottom:8px; }
+  .bar{ height:8px; border-radius:8px; background:rgba(255,255,255,0.07); overflow:hidden; }
+  .bar-fill{ height:100%; border-radius:8px; transition:width .5s ease; }
+  .bar-fill.energy{ background:linear-gradient(90deg,#3ce8a0,#39e6ff); }
+  .bar-fill.xp{ background:linear-gradient(90deg,#9b6bff,#ff8ad8); }
+
+  .mission-card{
+    display:flex; align-items:center; gap:12px; padding:14px 16px; margin-bottom:10px;
+  }
+  .mission-icon{ width:38px; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; background:rgba(255,255,255,0.06); }
+  .mission-info{ flex:1; }
+  .mission-info .t{ font-size:13px; font-weight:600; }
+  .mission-info .s{ font-size:11px; color:var(--text-muted); margin-top:3px; }
+  .mission-reward{ font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent-gold); font-weight:700; }
+
+  /* ---------- Tap screen ---------- */
+  #tap .content{ display:flex; flex-direction:column; align-items:center; padding-top:6px; }
+  .energy-pill{
+    display:flex; align-items:center; gap:8px; padding:8px 16px; border-radius:20px; margin-top:4px;
+    font-family:'JetBrains Mono',monospace; font-size:13px;
+  }
+  .tap-stage{
+    position:relative; width:280px; height:280px; margin:26px auto 10px auto;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .ring{ position:absolute; border-radius:50%; border:1px solid rgba(57,230,255,0.25); }
+  .ring1{ width:100%; height:100%; animation:spinring 14s linear infinite; }
+  .ring2{ width:82%; height:82%; border-color:rgba(155,107,255,0.3); animation:spinring 10s linear infinite reverse; }
+  @keyframes spinring{ from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+  .tap-coin{
+    width:190px; height:190px; border-radius:50%;
+    background:conic-gradient(from 200deg, #fff2c6, #ffc857 30%, #a5710f 55%, #ffc857 80%, #fff2c6);
+    box-shadow:
+      0 0 0 6px rgba(255,255,255,0.08),
+      0 0 90px 18px rgba(255,200,87,0.35),
+      inset 0 10px 24px rgba(255,255,255,0.55),
+      inset 0 -18px 30px rgba(0,0,0,0.45);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; user-select:none;
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:64px; color:#5b3a06;
+    transition:transform .08s ease;
+    position:relative; z-index:2;
+  }
+  .tap-coin:active{ transform:scale(0.93); }
+  .shockwave{
+    position:absolute; width:190px; height:190px; border-radius:50%;
+    border:2px solid var(--accent-cyan); opacity:0; pointer-events:none;
+  }
+  .shockwave.go{ animation:shock .55s ease-out forwards; }
+  @keyframes shock{ 0%{opacity:0.7; transform:scale(1);} 100%{opacity:0; transform:scale(1.55);} }
+  .floatnum{
+    position:absolute; left:50%; top:32%; transform:translateX(-50%);
+    font-family:'JetBrains Mono',monospace; font-weight:700; font-size:22px; color:var(--accent-gold);
+    pointer-events:none; animation:floatup 0.9s ease-out forwards;
+  }
+  @keyframes floatup{ 0%{opacity:1; transform:translate(-50%,0);} 100%{opacity:0; transform:translate(-50%,-70px);} }
+  .tap-hint{ color:var(--text-muted); font-size:12px; margin-top:6px; }
+  .boost-row{ display:flex; gap:10px; width:100%; margin-top:20px; }
+  .boost-btn{ flex:1; text-align:center; padding:12px 8px; border-radius:18px; font-size:12px; font-weight:600; }
+  .boost-btn .ico{ font-size:18px; display:block; margin-bottom:4px; }
+
+  /* wallet */
+  .action-row{ display:flex; gap:12px; margin-top:16px; }
+  .action-btn{
+    flex:1; padding:12px; text-align:center; border-radius:18px; font-size:12px; font-weight:700;
+    background:linear-gradient(135deg,var(--accent-violet),var(--accent-cyan)); color:#04121a; border:none;
+  }
+  .action-btn.ghost{ background:var(--glass-fill); color:var(--text-primary); border:1px solid var(--glass-border); }
+  .tx-row{ display:flex; align-items:center; gap:12px; padding:12px 4px; border-bottom:1px solid rgba(255,255,255,0.06); }
+  .tx-ico{ width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; }
+  .tx-info{ flex:1; }
+  .tx-info .t{ font-size:13px; font-weight:600; }
+  .tx-info .s{ font-size:11px; color:var(--text-muted); }
+  .tx-amt{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:13px; }
+  .tx-amt.pos{ color:var(--good); } .tx-amt.neg{ color:var(--danger); }
+
+  /* rewards */
+  .reward-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .reward-tile{ padding:16px; text-align:center; }
+  .reward-tile .ico{ font-size:26px; }
+  .reward-tile .t{ font-size:12px; font-weight:600; margin-top:8px; }
+  .reward-tile .s{ font-size:10px; color:var(--text-muted); margin-top:2px; }
+  .spin-cta{ width:100%; margin-top:14px; padding:14px; text-align:center; border-radius:20px; font-weight:700; font-size:13px; background:linear-gradient(135deg,#ff8ad8,var(--accent-violet)); color:#180820; border:none; }
+
+  /* leaderboard rows */
+  .lb-row{ display:flex; align-items:center; gap:12px; padding:10px 6px; }
+  .lb-rank{ width:26px; text-align:center; font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--text-muted); font-size:13px; }
+  .lb-rank.top1{ color:var(--accent-gold); }
+  .lb-rank.top2{ color:#d6d6e8; }
+  .lb-rank.top3{ color:#e0a870; }
+  .lb-name{ flex:1; font-size:13px; font-weight:600; }
+  .lb-val{ font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent-gold); font-weight:700; }
+
+  /* profile */
+  .profile-head{ display:flex; flex-direction:column; align-items:center; gap:8px; padding:20px 0 10px 0; }
+  .avatar-lg{
+    width:78px; height:78px; border-radius:22px;
+    background:linear-gradient(135deg,var(--accent-violet),var(--accent-cyan));
+    display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:28px;
+    box-shadow:0 8px 24px rgba(155,107,255,0.4);
+  }
+  .settings-row{ display:flex; align-items:center; justify-content:space-between; padding:14px 4px; border-bottom:1px solid rgba(255,255,255,0.06); font-size:13px; }
+  .settings-row .l{ display:flex; align-items:center; gap:10px; }
+  .toggle{ width:40px; height:22px; border-radius:20px; background:rgba(255,255,255,0.1); position:relative; cursor:pointer; }
+  .toggle.on{ background:linear-gradient(90deg,var(--accent-violet),var(--accent-cyan)); }
+  .toggle .knob{ position:absolute; width:16px; height:16px; border-radius:50%; background:#fff; top:3px; left:3px; transition:left .2s ease; }
+  .toggle.on .knob{ left:21px; }
+
+  /* bottom nav */
+  #bottomnav{
+    position:absolute; left:16px; right:16px; bottom:16px; height:66px; border-radius:24px;
+    display:flex; align-items:center; justify-content:space-around;
+    z-index:10;
+  }
+  .navitem{ display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--text-muted); font-size:10px; cursor:pointer; padding:6px 10px; border-radius:14px; transition:color .2s ease; }
+  .navitem .ico{ font-size:18px; }
+  .navitem.active{ color:var(--accent-cyan); }
+  .navitem.active .ico{ filter:drop-shadow(0 0 8px rgba(57,230,255,0.7)); }
+
+  /* toast */
+  #toast{
+    position:absolute; left:50%; bottom:100px; transform:translateX(-50%) translateY(10px);
+    padding:10px 18px; border-radius:16px; font-size:12px; font-weight:600; opacity:0; pointer-events:none;
+    transition:opacity .25s ease, transform .25s ease; z-index:50; white-space:nowrap;
+  }
+  #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  h1,h2,h3{ margin:0; }
+</style>
+</head>
+<body>
+<div id="phone">
+  <div class="particle" style="left:12%; width:3px; height:3px; animation-duration:9s;"></div>
+  <div class="particle" style="left:30%; width:2px; height:2px; animation-duration:13s; animation-delay:2s;"></div>
+  <div class="particle" style="left:55%; width:4px; height:4px; animation-duration:11s; animation-delay:1s;"></div>
+  <div class="particle" style="left:75%; width:2px; height:2px; animation-duration:15s; animation-delay:3s;"></div>
+  <div class="particle" style="left:88%; width:3px; height:3px; animation-duration:10s; animation-delay:4s;"></div>
+
+  <!-- SPLASH -->
+  <div class="screen active" id="splash">
+    <div class="coin3d"></div>
+    <div class="brand">AFXX REWARDS</div>
+    <div class="slogan">Move &nbsp;•&nbsp; Tap &nbsp;•&nbsp; Earn</div>
+    <div class="loadbar"><div class="loadbar-fill"></div></div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="screen" id="dashboard">
+    <div class="topbar">
+      <div>
+        <div class="greeting">Welcome back</div>
+        <div class="username">Nova_47</div>
+      </div>
+      <div class="avatar">N</div>
+    </div>
+    <div class="content">
+      <div class="glass balance-card">
+        <div class="balance-label">Total Balance</div>
+        <div class="balance-value" id="dashBalance">12,480 <span>AFXX</span></div>
+        <div class="balance-row">
+          <div class="glass mini-stat"><div class="l">Level</div><div class="v">14</div></div>
+          <div class="glass mini-stat"><div class="l">Rank</div><div class="v">#238</div></div>
+          <div class="glass mini-stat"><div class="l">Streak</div><div class="v">9d</div></div>
+        </div>
+      </div>
+
+      <div class="glass energy-wrap">
+        <div class="energy-top"><span>Energy</span><span id="dashEnergyLabel">640 / 1000</span></div>
+        <div class="bar"><div class="bar-fill energy" id="dashEnergyBar" style="width:64%"></div></div>
+        <div class="energy-top" style="margin-top:12px;"><span>XP · Level 14</span><span>3,200 / 5,000</span></div>
+        <div class="bar"><div class="bar-fill xp" style="width:64%"></div></div>
+      </div>
+
+      <div class="section-title">Daily Missions <small>2 of 4 done</small></div>
+      <div class="glass mission-card">
+        <div class="mission-icon">👣</div>
+        <div class="mission-info"><div class="t">Walk 3,000 steps</div><div class="s">1,840 / 3,000</div></div>
+        <div class="mission-reward">+120</div>
+      </div>
+      <div class="glass mission-card">
+        <div class="mission-icon">⚡</div>
+        <div class="mission-info"><div class="t">Land 50 taps</div><div class="s">50 / 50 · complete</div></div>
+        <div class="mission-reward">+80</div>
+      </div>
+      <div class="glass mission-card">
+        <div class="mission-icon">🎁</div>
+        <div class="mission-info"><div class="t">Claim daily bonus</div><div class="s">Resets in 6h 12m</div></div>
+        <div class="mission-reward">+50</div>
+      </div>
+
+      <div class="section-title">Recent Activity</div>
+      <div class="glass" style="padding:6px 14px;">
+        <div class="tx-row"><div class="tx-ico" style="background:rgba(60,232,160,0.15);">👣</div><div class="tx-info"><div class="t">Walk reward</div><div class="s">Today, 8:14 AM</div></div><div class="tx-amt pos">+64</div></div>
+        <div class="tx-row"><div class="tx-ico" style="background:rgba(255,200,87,0.15);">👆</div><div class="tx-info"><div class="t">Tap session</div><div class="s">Today, 7:02 AM</div></div><div class="tx-amt pos">+310</div></div>
+        <div class="tx-row" style="border-bottom:none;"><div class="tx-ico" style="background:rgba(155,107,255,0.15);">🎯</div><div class="tx-info"><div class="t">Mission complete</div><div class="s">Yesterday</div></div><div class="tx-amt pos">+80</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAP -->
+  <div class="screen" id="tap">
+    <div class="topbar">
+      <div><div class="greeting">Tap &amp; Earn</div><div class="username" id="tapBalance">12,480 AFXX</div></div>
+      <div class="glass energy-pill"><span>⚡</span><span id="tapEnergyLabel">640/1000</span></div>
+    </div>
+    <div class="content">
+      <div class="tap-stage" id="tapStage">
+        <div class="ring ring1"></div>
+        <div class="ring ring2"></div>
+        <div class="tap-coin" id="tapCoin">A</div>
+      </div>
+      <div class="tap-hint">Tap the core to mine AFXX · 1 tap = 4-8 coins</div>
+      <div class="boost-row">
+        <div class="glass boost-btn"><span class="ico">🔥</span>Combo x<span id="comboVal">1</span></div>
+        <div class="glass boost-btn"><span class="ico">🚀</span>Turbo Boost</div>
+        <div class="glass boost-btn"><span class="ico">🤖</span>Auto-Tap</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WALLET -->
+  <div class="screen" id="wallet">
+    <div class="topbar">
+      <div><div class="greeting">Wallet</div><div class="username">Overview</div></div>
+      <div class="avatar">N</div>
+    </div>
+    <div class="content">
+      <div class="glass balance-card">
+        <div class="balance-label">Available Coins</div>
+        <div class="balance-value">12,480 <span>AFXX</span></div>
+        <div class="action-row">
+          <button class="action-btn" onclick="toast('Withdraw request drafted — demo only')">Withdraw</button>
+          <button class="action-btn ghost" onclick="toast('Gift card catalog — demo only')">Gift Cards</button>
+        </div>
+      </div>
+      <div class="section-title">Transaction History</div>
+      <div class="glass" style="padding:4px 14px;">
+        <div class="tx-row"><div class="tx-ico" style="background:rgba(255,200,87,0.15);">👆</div><div class="tx-info"><div class="t">Tap session</div><div class="s">Today, 7:02 AM</div></div><div class="tx-amt pos">+310</div></div>
+        <div class="tx-row"><div class="tx-ico" style="background:rgba(60,232,160,0.15);">👣</div><div class="tx-info"><div class="t">Walk reward</div><div class="s">Today, 8:14 AM</div></div><div class="tx-amt pos">+64</div></div>
+        <div class="tx-row"><div class="tx-ico" style="background:rgba(255,92,122,0.15);">🎟️</div><div class="tx-info"><div class="t">Gift card redeem</div><div class="s">2 days ago</div></div><div class="tx-amt neg">-2,000</div></div>
+        <div class="tx-row" style="border-bottom:none;"><div class="tx-ico" style="background:rgba(155,107,255,0.15);">🎯</div><div class="tx-info"><div class="t">Mission complete</div><div class="s">3 days ago</div></div><div class="tx-amt pos">+80</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REWARDS -->
+  <div class="screen" id="rewards">
+    <div class="topbar">
+      <div><div class="greeting">Rewards</div><div class="username">Bonuses &amp; drops</div></div>
+      <div class="avatar">N</div>
+    </div>
+    <div class="content">
+      <button class="spin-cta" onclick="toast('🎉 Lucky Spin — demo reward: +150 AFXX')">🎡 Spin the Lucky Wheel</button>
+      <div class="section-title">Today's Rewards</div>
+      <div class="reward-grid">
+        <div class="glass reward-tile" onclick="toast('Daily bonus claimed (demo)')"><div class="ico">🎁</div><div class="t">Daily Bonus</div><div class="s">+50 AFXX</div></div>
+        <div class="glass reward-tile" onclick="toast('Scratch card — demo')"><div class="ico">🎫</div><div class="t">Scratch Card</div><div class="s">1 left today</div></div>
+        <div class="glass reward-tile" onclick="toast('Mystery box — demo')"><div class="ico">📦</div><div class="t">Mystery Box</div><div class="s">Unlocks Lv.15</div></div>
+        <div class="glass reward-tile" onclick="toast('Season pass — demo')"><div class="ico">🏆</div><div class="t">Season Pass</div><div class="s">Tier 6 / 40</div></div>
+      </div>
+      <div class="section-title">Leaderboard <small>Weekly</small></div>
+      <div class="glass" style="padding:4px 14px;">
+        <div class="lb-row"><div class="lb-rank top1">1</div><div class="lb-name">Kestrel_X</div><div class="lb-val">88,204</div></div>
+        <div class="lb-row"><div class="lb-rank top2">2</div><div class="lb-name">MoonWalker</div><div class="lb-val">81,930</div></div>
+        <div class="lb-row"><div class="lb-rank top3">3</div><div class="lb-name">ZaraTaps</div><div class="lb-val">77,412</div></div>
+        <div class="lb-row"><div class="lb-rank">238</div><div class="lb-name">Nova_47 (you)</div><div class="lb-val">12,480</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="screen" id="profile">
+    <div class="content" style="padding-top:8px;">
+      <div class="profile-head">
+        <div class="avatar-lg">N</div>
+        <div class="username">Nova_47</div>
+        <div class="greeting">Level 14 · Joined 2026</div>
+      </div>
+      <div class="reward-grid" style="margin-bottom:6px;">
+        <div class="glass reward-tile"><div class="ico">👟</div><div class="t">184,200</div><div class="s">Lifetime steps</div></div>
+        <div class="glass reward-tile"><div class="ico">👆</div><div class="t">42,900</div><div class="s">Lifetime taps</div></div>
+      </div>
+      <div class="section-title">Settings</div>
+      <div class="glass" style="padding:4px 16px;">
+        <div class="settings-row"><div class="l">🔔 Notifications</div><div class="toggle on" onclick="this.classList.toggle('on')"><div class="knob"></div></div></div>
+        <div class="settings-row"><div class="l">🌓 Dark Theme</div><div class="toggle on" onclick="this.classList.toggle('on')"><div class="knob"></div></div></div>
+        <div class="settings-row"><div class="l">🌐 Language</div><div class="greeting">English</div></div>
+        <div class="settings-row" style="border-bottom:none;"><div class="l">🚪 Log out</div><div class="greeting">›</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="glass"></div>
+
+  <div id="bottomnav" class="glass">
+    <div class="navitem active" data-screen="dashboard"><span class="ico">🏠</span>Home</div>
+    <div class="navitem" data-screen="tap"><span class="ico">👆</span>Tap</div>
+    <div class="navitem" data-screen="wallet"><span class="ico">💎</span>Wallet</div>
+    <div class="navitem" data-screen="rewards"><span class="ico">🎁</span>Rewards</div>
+    <div class="navitem" data-screen="profile"><span class="ico">👤</span>Profile</div>
+  </div>
+</div>
+
+<script>
+  // ---- navigation ----
+  const screens = document.querySelectorAll('.screen');
+  const navitems = document.querySelectorAll('.navitem');
+  function showScreen(id){
+    screens.forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    navitems.forEach(n => n.classList.toggle('active', n.dataset.screen === id));
+  }
+  navitems.forEach(item => item.addEventListener('click', () => showScreen(item.dataset.screen)));
+
+  setTimeout(() => { showScreen('dashboard'); }, 1900);
+
+  // ---- toast ----
+  let toastTimer;
+  function toast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  // ---- Backend config ----
+  // Set this to your deployed backend (see server/index.js) to make coins
+  // real and persistent per Telegram user. Left blank, the app runs in
+  // local demo mode (state resets on reload — fine for previewing the UI,
+  // NOT what you want for a real launch).
+  const API_BASE = ''; // e.g. 'https://afxx-wallet.onrender.com'
+
+  let state = { coins: 12480, energy: 640, maxEnergy: 1000, combo: 1 };
+  let backendReady = false; // true once a real session is loaded from the server
+
+  function refreshBalances(){
+    document.getElementById('dashBalance').innerHTML = state.coins.toLocaleString() + ' <span>AFXX</span>';
+    document.getElementById('tapBalance').textContent = state.coins.toLocaleString() + ' AFXX';
+    document.getElementById('dashEnergyLabel').textContent = state.energy + ' / ' + state.maxEnergy;
+    document.getElementById('dashEnergyBar').style.width = (state.energy / state.maxEnergy * 100) + '%';
+    document.getElementById('tapEnergyLabel').textContent = state.energy + '/' + state.maxEnergy;
+  }
+
+  const tapCoin = document.getElementById('tapCoin');
+  const tapStage = document.getElementById('tapStage');
+  let lastTap = 0;
+  let tapInFlight = false; // prevents overlapping requests to the backend
+
+  function playTapFx(gain){
+    const wave = document.createElement('div');
+    wave.className = 'shockwave go';
+    tapStage.appendChild(wave);
+    setTimeout(() => wave.remove(), 600);
+
+    const num = document.createElement('div');
+    num.className = 'floatnum';
+    num.textContent = '+' + gain;
+    num.style.left = (50 + (Math.random() * 30 - 15)) + '%';
+    tapStage.appendChild(num);
+    setTimeout(() => num.remove(), 900);
+
+    if (navigator.vibrate) navigator.vibrate(12);
+  }
+
+  // ---- Local demo tap (no backend configured) ----
+  function localTap(){
+    if (state.energy <= 0){ toast('Out of energy — recharge and come back'); return; }
+    const now = Date.now();
+    state.combo = (now - lastTap < 700) ? Math.min(state.combo + 1, 9) : 1;
+    lastTap = now;
+    document.getElementById('comboVal').textContent = state.combo;
+
+    const gain = Math.round((4 + Math.random() * 4) * (1 + (state.combo - 1) * 0.15));
+    state.coins += gain;
+    state.energy = Math.max(0, state.energy - 8);
+    refreshBalances();
+    playTapFx(gain);
+  }
+
+  // ---- Real tap (backend decides the reward, coins persist server-side) ----
+  async function backendTap(initData){
+    if (tapInFlight) return;
+    if (state.energy <= 0){ toast('Out of energy — recharge and come back'); return; }
+    tapInFlight = true;
+    try {
+      const res = await fetch(API_BASE + '/api/tap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData })
+      });
+      const data = await res.json();
+      if (!res.ok){ toast(data.error || 'Tap failed'); return; }
+      state.coins = data.coins;
+      state.energy = data.energy;
+      refreshBalances();
+      playTapFx(data.gain);
+    } catch (e) {
+      toast('Network error — check backend connection');
+    } finally {
+      tapInFlight = false;
+    }
+  }
+
+  refreshBalances();
+
+  // Client-side energy regen ticker (visual only). In backend mode the real
+  // number is corrected on every /api/tap or /api/session response; call
+  // POST /api/regen periodically from here if you want the server total to
+  // creep up between taps too.
+  setInterval(() => {
+    if (state.energy < state.maxEnergy){
+      state.energy = Math.min(state.maxEnergy, state.energy + 2);
+      refreshBalances();
+    }
+  }, 4000);
+
+  // ---- Telegram Mini App integration ----
+  // Works only when this page is opened from inside Telegram (as a Bot Menu
+  // Button / Mini App), where Telegram injects window.Telegram.WebApp and
+  // signs tg.initData. Opened in a normal browser, this block is skipped
+  // and the app stays in local demo mode with the "Nova_47" placeholder.
+  (function initTelegram(){
+    const tg = window.Telegram && window.Telegram.WebApp;
+    if (!tg) {
+      tapCoin.addEventListener('click', localTap);
+      return;
+    }
+
+    tg.ready();
+    tg.expand();
+    tg.enableClosingConfirmation();
+
+    const applyTheme = () => {
+      const p = tg.themeParams || {};
+      if (p.bg_color) document.body.style.background = p.bg_color;
+    };
+    applyTheme();
+    tg.onEvent('themeChanged', applyTheme);
+
+    const tgUser = tg.initDataUnsafe && tg.initDataUnsafe.user;
+    if (tgUser) {
+      const displayName = tgUser.username ? '@' + tgUser.username : (tgUser.first_name || 'Player');
+      const initial = displayName.replace('@','').charAt(0).toUpperCase();
+      document.querySelectorAll('.username').forEach(el => { if (el.textContent.includes('Nova_47')) el.textContent = displayName; });
+      document.querySelectorAll('.avatar, .avatar-lg').forEach(el => el.textContent = initial);
+    }
+
+    tg.MainButton.setText('Claim Daily Bonus · +50');
+    tg.MainButton.show();
+
+    if (API_BASE && tg.initData) {
+      // Real session: fetch this Telegram user's persisted balance from the backend.
+      fetch(API_BASE + '/api/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData: tg.initData })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.coins !== undefined) {
+          state.coins = data.coins;
+          state.energy = data.energy;
+          backendReady = true;
+          refreshBalances();
+        }
+      })
+      .catch(() => toast('Could not reach backend — showing local demo balance'));
+
+      tapCoin.addEventListener('click', () => backendTap(tg.initData));
+
+      tg.MainButton.onClick(async () => {
+        // Daily bonus still needs its own backend endpoint to be real;
+        // this demonstrates the pattern — add /api/claim-bonus similarly to /api/tap.
+        toast('Wire this button to a /api/claim-bonus endpoint for a real bonus');
+      });
+    } else {
+      // Telegram user detected but no backend configured — local demo mode.
+      tapCoin.addEventListener('click', localTap);
+      tg.MainButton.onClick(() => {
+        state.coins += 50;
+        refreshBalances();
+        toast('Daily bonus claimed (local demo — not saved)');
+      });
+    }
+
+    const nativeHaptic = () => { if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light'); };
+    tapCoin.addEventListener('click', nativeHaptic);
+  })();
+</script>
+</body>
+</html>
